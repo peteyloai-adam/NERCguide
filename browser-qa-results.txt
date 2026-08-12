@@ -1,0 +1,70 @@
+NERC Study Console 3.1.1 No-Comics Browser QA
+======================================
+Passed: 61
+Failed: 0
+
+PASSED CHECKS
+- browser loads complete no-comics release inventory
+- skip link and live status region render
+- skip link moves focus to main content
+- active navigation exposes aria-current
+- comic routes, data, and rendered sections are absent
+- adaptive page presents prioritized concepts
+- adaptive priorities explain unattempted status
+- adaptive question displays transparent recommendation reason
+- practice answer appends attempt history
+- practice answer updates misconception evidence
+- practice feedback is announced through live region
+- integrated events landing shows all three events
+- branching event reaches persistent debrief
+- event choices persist and improve operating-state metrics
+- event debrief provides metrics and lesson links
+- default plan builds 12 credential-weighted weeks
+- plan rebuilds to 8 weeks
+- plan rebuilds to 26 weeks
+- plan identifies selected credential
+- Phase 2 operational labs remain available
+- TO test-day landing shows full administered item count
+- TO test-day draw has scored blueprint plus 20 items
+- TO scored and experimental-style draws are disjoint and unique
+- TO scored draw matches every official subtopic target
+- TO number-key answer shortcut works
+- TO flag keyboard shortcut works
+- TO arrow navigation shortcut works
+- scored result uses only TO scored items
+- experimental-style result is reported separately
+- RC test-day landing shows full administered item count
+- RC test-day draw has scored blueprint plus 20 items
+- RC scored and experimental-style draws are disjoint and unique
+- RC scored draw matches every official subtopic target
+- RC number-key answer shortcut works
+- RC flag keyboard shortcut works
+- RC arrow navigation shortcut works
+- BT test-day landing shows full administered item count
+- BT test-day draw has scored blueprint plus 20 items
+- BT scored and experimental-style draws are disjoint and unique
+- BT scored draw matches every official subtopic target
+- BT number-key answer shortcut works
+- BT flag keyboard shortcut works
+- BT arrow navigation shortcut works
+- BI test-day landing shows full administered item count
+- BI test-day draw has scored blueprint plus 20 items
+- BI scored and experimental-style draws are disjoint and unique
+- BI scored draw matches every official subtopic target
+- BI number-key answer shortcut works
+- BI flag keyboard shortcut works
+- BI arrow navigation shortcut works
+- local analytics are off by default
+- learner can opt into local analytics
+- high-contrast preference applies immediately
+- 130 percent text preference applies immediately
+- reduced-motion preference applies immediately
+- progress export creates a versioned portable bundle
+- progress import validates and writes the portable state
+- Phase 3 events reflow without horizontal page overflow at mobile width and 130 percent text
+- visible interactive controls have accessible names
+- browser recorded no uncaught JavaScript errors
+- browser console recorded no errors
+
+FAILED CHECKS
+- None
