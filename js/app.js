@@ -45,6 +45,7 @@
 
   /* ---- state (localStorage with in-memory fallback) --------------------- */
   var KEY = "nerc-to-console.v1";
+  var RETURN_KEY = "nerc-to-console.return-context.v1";
   var mem = null;
   function normalizeState(s) {
     s = s || {};
@@ -73,6 +74,18 @@
     mem = normalizeState(mem);
     try { window.localStorage.setItem(KEY, JSON.stringify(mem)); } catch (e) {}
   }
+  function saveReturnContext(sectionId, href, label) {
+    if (!sectionId || String(href || "").indexOf("#/") !== 0) return;
+    var value = { section: sectionId, href: href, label: label || "Return to your previous activity" };
+    try { window.sessionStorage.setItem(RETURN_KEY, JSON.stringify(value)); } catch (e) {}
+  }
+  function loadReturnContext() {
+    try {
+      var raw = window.sessionStorage.getItem(RETURN_KEY), value = raw ? JSON.parse(raw) : null;
+      return value && value.section && String(value.href || "").indexOf("#/") === 0 ? value : null;
+    } catch (e) { return null; }
+  }
+  function clearReturnContext() { try { window.sessionStorage.removeItem(RETURN_KEY); } catch (e) {} }
   function announce(message) {
     var live = document.getElementById("live-status");
     if (!live) return;
@@ -218,7 +231,7 @@
     tip.innerHTML =
       '<span class="c-tooltip__term">' + esc(t.term) + '</span>' +
       (t.acronym ? '<span class="c-tooltip__acr">' + esc(t.acronym) + '</span>' : '') +
-      '<p class="c-tooltip__def">' + esc(t.definition) + '</p>' +
+      '<p class="c-tooltip__def">' + esc(stripText(t.definition)) + '</p>' +
       '<a class="c-tooltip__link" href="#/glossary">Open in glossary \u2192</a>';
     var r = target.getBoundingClientRect();
     tip.style.left = "0px"; tip.style.top = "0px";
@@ -584,6 +597,15 @@
     var v = el("div", "c-view");
     v.appendChild(el("div", "eyebrow", esc(m.title) + " &middot; Section " + (idx + 1) + " of " + m.sections.length));
     v.appendChild(el("h1", "c-h1", esc(s.title)));
+    var returnContext = loadReturnContext();
+    if (returnContext && returnContext.section === s.id) {
+      var returnBar = el("div", "c-return-context");
+      returnBar.appendChild(el("span", null, "You opened this lesson from another study activity."));
+      var returnLink = link("c-btn c-btn--primary", returnContext.href, "← " + esc(returnContext.label));
+      returnLink.addEventListener("click", clearReturnContext);
+      returnBar.appendChild(returnLink);
+      v.appendChild(returnBar);
+    }
     var prose = el("div", "c-prose");
     renderBlocks(s.body, prose);
     v.appendChild(prose);
@@ -595,11 +617,17 @@
     var reviewed = !!loadState().reviewed[s.id];
     var btn = el("button", "c-btn " + (reviewed ? "c-btn--primary" : ""),
       (reviewed ? "\u2713 Reviewed" : "Mark reviewed"));
+    btn.setAttribute("aria-pressed", reviewed ? "true" : "false");
     btn.addEventListener("click", function () {
       var st = loadState();
-      if (st.reviewed[s.id]) delete st.reviewed[s.id]; else st.reviewed[s.id] = Date.now();
+      var nowReviewed = !st.reviewed[s.id];
+      if (nowReviewed) st.reviewed[s.id] = Date.now(); else delete st.reviewed[s.id];
       saveState();
-      route(); // re-render to update LEDs + gauge
+      btn.textContent = nowReviewed ? "\u2713 Reviewed" : "Mark reviewed";
+      btn.classList.toggle("c-btn--primary", nowReviewed);
+      btn.setAttribute("aria-pressed", nowReviewed ? "true" : "false");
+      renderChrome(document.getElementById("strip-crumb").innerHTML);
+      announce(nowReviewed ? "Section marked reviewed." : "Reviewed mark removed.");
     });
     bar.appendChild(btn);
 
@@ -726,13 +754,17 @@
       '<div>' + esc(q.explain) + '</div>' + detail +
       '<div class="c-confidence" role="group" aria-label="Confidence in this answer"><span>How confident were you?</span><button type="button" data-confidence="guessed">Guessed</button><button type="button" data-confidence="unsure">Unsure</button><button type="button" data-confidence="knew">Knew it</button></div>' +
       '<div class="c-explain__actions">' +
-        '<a class="c-btn" href="#/m/' + q.module + '/s/' + q.section + '">Review this topic &rarr;</a>' +
+        '<a class="c-btn" data-review-topic href="#/m/' + q.module + '/s/' + q.section + '">Review this topic &rarr;</a>' +
         (q.std ? '<a class="c-btn" href="#/standards/' + encodeURIComponent(q.std) + '">Standard: ' + esc(q.std) + ' &rarr;</a>' : '') +
         (quizState.i < quizState.list.length - 1
           ? '<button class="c-btn c-btn--primary" id="q-next">Next item &rarr;</button>'
           : '<a class="c-btn c-btn--primary" href="#/">Finish set &rarr;</a>') +
       '</div>';
     wrap.appendChild(ex);
+    var topicLink = ex.querySelector("[data-review-topic]");
+    if (topicLink) topicLink.addEventListener("click", function () {
+      saveReturnContext(q.section, "#/practice/resume-run", "Return to practice item " + (quizState.i + 1) + " of " + quizState.list.length);
+    });
     renderChrome(document.getElementById("strip-crumb").innerHTML); // refresh completion
     Array.prototype.forEach.call(ex.querySelectorAll("[data-confidence]"), function (cb) {
       cb.addEventListener("click", function () {
@@ -864,13 +896,50 @@
   function viewExamResult(){
     clearExamTimer();var ex=loadExam();if(!ex||!ex.done){location.hash="#/exam";return;}var scored=scoredIds(ex),total=scored.length,correct=scoreExam(ex,scored),cut=cutFor(total),pass=correct>=cut,pct=Math.round(correct/total*100),byDom={};BLUEPRINT.forEach(function(d){byDom[d.id]={name:d.short,correct:0,total:0};});scored.forEach(function(id){var q=qById[id],ok=ex.answers[id]===q.answer;if(q&&byDom[q.domain]){byDom[q.domain].total++;if(ok)byDom[q.domain].correct++;}});
     var expTotal=(ex.experimentalIds||[]).length,expCorrect=scoreExam(ex,ex.experimentalIds||[]),v=el("div","c-view"),col=pass?"var(--normal)":"var(--emergency)";
+    var missed=scored.filter(function(id){var q=qById[id];return !q||ex.answers[id]!==q.answer;}),flagged=(ex.qids||[]).filter(function(id){return !!(ex.flags||{})[id];});
+    var parts=location.hash.replace(/^#\/?/,"").split("/").filter(Boolean),requested=["missed","flagged","all"].indexOf(parts[2])>=0?parts[2]:null;
     var html='<div class="eyebrow">Scored-result report</div><h1 class="c-h1" style="color:'+col+'">'+(pass?'MEETS PRACTICE CUT':'BELOW PRACTICE CUT')+'</h1><div class="c-card p3-score-card"><div><div class="p3-score" style="color:'+col+'">'+correct+'<span>/'+total+'</span></div><div class="c-tile__lbl">scored result · '+pct+'%</div></div><div><div class="p3-cut">'+cut+'</div><div class="c-tile__lbl">published scored-item cut</div></div></div>';
     if(expTotal)html+='<div class="c-note c-note--op"><div class="c-note__title">Experimental-style items are separate</div>You answered <strong>'+expCorrect+'/'+expTotal+'</strong> correctly on the 20 experimental-style items. This result is shown for learning only and did not affect the scored benchmark.</div>';
-    html+='<h2 class="c-h2">Scored items by domain</h2><div class="c-seclist">';BLUEPRINT.forEach(function(d){var b=byDom[d.id],p=b.total?Math.round(100*b.correct/b.total):0,benchmark=Math.round(cutPct()*100),dcol=p>=benchmark?'var(--normal)':(p>=60?'var(--alert)':'var(--emergency)');html+='<div class="c-secrow"><span class="c-secrow__t">'+esc(d.name)+'<span class="p3-meter"><span style="width:'+p+'%;background:'+dcol+'"></span></span></span><span class="mono" style="color:'+dcol+'">'+b.correct+'/'+b.total+'</span></div>';});html+='</div><div style="display:flex;gap:8px;margin-top:20px;flex-wrap:wrap"><button class="c-btn" id="ex-review" type="button">Review scored misses</button><button class="c-btn c-btn--primary" id="ex-new" type="button">Start another exam</button><a class="c-btn" href="#/adaptive">Build remediation set</a></div><div id="ex-reviewbox"></div><p class="c-fineprint">The cut comparison uses only the credential blueprint items. Results remain practice benchmarks and do not predict an official examination outcome.</p>';
-    v.innerHTML=html;mountView(v);document.getElementById("ex-new").addEventListener("click",function(){clearExam();location.hash="#/exam";});document.getElementById("ex-review").addEventListener("click",function(){var box=document.getElementById("ex-reviewbox");if(box.children.length){box.innerHTML="";this.textContent="Review scored misses";return;}this.textContent="Hide review";renderReview(box,ex,false,scored);});
+    html+='<h2 class="c-h2">Scored items by domain</h2><div class="c-seclist">';BLUEPRINT.forEach(function(d){var b=byDom[d.id],p=b.total?Math.round(100*b.correct/b.total):0,benchmark=Math.round(cutPct()*100),dcol=p>=benchmark?'var(--normal)':(p>=60?'var(--alert)':'var(--emergency)');html+='<div class="c-secrow"><span class="c-secrow__t">'+esc(d.name)+'<span class="p3-meter"><span style="width:'+p+'%;background:'+dcol+'"></span></span></span><span class="mono" style="color:'+dcol+'">'+b.correct+'/'+b.total+'</span></div>';});
+    html+='</div><h2 class="c-h2">Review your answers</h2><p class="c-lead" style="font-size:1rem">Open missed, flagged, or every administered item. If you follow a lesson link, a return button will bring you back to the same review list.</p><div class="p3-review-controls"><button class="c-btn" data-review-mode="missed" type="button">Scored misses ('+missed.length+')</button><button class="c-btn" data-review-mode="flagged" type="button"'+(flagged.length?'':' disabled')+'>Flagged items ('+flagged.length+')</button><button class="c-btn" data-review-mode="all" type="button">All answers ('+(ex.qids||[]).length+')</button><button class="c-btn c-btn--primary" id="ex-new" type="button">Start another exam</button><a class="c-btn" href="#/adaptive">Build remediation set</a></div><div id="ex-reviewbox"></div><p class="c-fineprint">The cut comparison uses only the credential blueprint items. Experimental-style items can appear in flagged or all-answer review but remain excluded from the scored result. Results remain practice benchmarks and do not predict an official examination outcome.</p>';
+    v.innerHTML=html;mountView(v);
+    document.getElementById("ex-new").addEventListener("click",function(){clearReturnContext();clearExam();location.hash="#/exam";});
+    var box=document.getElementById("ex-reviewbox"),activeMode=null;
+    function showReview(mode,scroll){
+      if(activeMode===mode&&box.children.length){activeMode=null;box.innerHTML="";Array.prototype.forEach.call(v.querySelectorAll("[data-review-mode]"),function(b){b.classList.remove("is-on");});window.history.replaceState(null,"","#/exam/result");return;}
+      activeMode=mode;renderReview(box,ex,mode);
+      Array.prototype.forEach.call(v.querySelectorAll("[data-review-mode]"),function(b){b.classList.toggle("is-on",b.getAttribute("data-review-mode")===mode);});
+      window.history.replaceState(null,"","#/exam/result/"+mode);
+      if(scroll)window.setTimeout(function(){box.scrollIntoView({behavior:document.documentElement.getAttribute("data-motion")==="reduce"?"auto":"smooth",block:"start"});},0);
+    }
+    Array.prototype.forEach.call(v.querySelectorAll("[data-review-mode]"),function(b){b.addEventListener("click",function(){showReview(b.getAttribute("data-review-mode"),true);});});
+    if(requested){showReview(requested,false);window.setTimeout(function(){box.scrollIntoView({behavior:"auto",block:"start"});},0);}
   }
 
-  function renderReview(box,ex,all,ids){box.innerHTML="";ids=ids||scoredIds(ex);var head=el("div");head.style.cssText="display:flex;gap:8px;align-items:center;margin:20px 0 8px";head.innerHTML='<span class="eyebrow" style="flex:1">'+(all?'All scored items':'Scored items you missed')+'</span>';var tog=el("button","c-btn c-btn--ghost",all?'Show only missed':'Show all scored');tog.addEventListener("click",function(){renderReview(box,ex,!all,ids);});head.appendChild(tog);box.appendChild(head);var letters=["A","B","C","D","E","F"],shown=0;ids.forEach(function(qid){var k=ex.qids.indexOf(qid),q=qById[qid],chosen=ex.answers[qid],ok=chosen===q.answer;if(!all&&ok)return;shown++;var card=el("div","c-card");card.style.marginBottom="10px";var h='<div class="c-q__counter">Item '+(k+1)+' · '+(domainById[q.domain]?domainById[q.domain].short:q.domain)+' · <span style="color:'+(ok?'var(--normal)':'var(--emergency)')+'">'+(ok?'correct':(chosen==null?'unanswered':'incorrect'))+'</span></div>'+qDiagram(q)+'<div style="margin:6px 0 8px">'+esc(q.stem)+'</div>';examOptionOrder(ex,q).forEach(function(ci,di){var mark=ci===q.answer?'✓ ':(ci===chosen?'✗ ':''),c=ci===q.answer?'var(--normal)':(ci===chosen?'var(--emergency)':'var(--readout-dim)');h+='<div style="font-size:.9rem;color:'+c+'">'+mark+letters[di]+'. '+esc(q.options[ci])+'</div>';});h+='<div class="c-secrow__n" style="margin-top:8px">'+esc(q.explain)+'</div><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><a class="c-tooltip__link" href="#/m/'+q.module+'/s/'+q.section+'">Review topic →</a>'+(q.std?'<a class="c-tooltip__link" href="#/standards/'+encodeURIComponent(q.std)+'">'+esc(q.std)+' →</a>':'')+'</div>';card.innerHTML=h;box.appendChild(card);});if(!shown)box.appendChild(el("p","c-secrow__n",all?'No items.':'Nothing missed — perfect score on the scored items.'));}
+  function renderReview(box,ex,mode){
+    box.innerHTML="";
+    var ids,label,empty;
+    if(mode==="flagged"){
+      ids=(ex.qids||[]).filter(function(id){return !!(ex.flags||{})[id];});label="Flagged items";empty="No items were flagged during this exam.";
+    }else if(mode==="all"){
+      ids=(ex.qids||[]).slice();label="All administered answers";empty="No items are available.";
+    }else{
+      ids=scoredIds(ex).filter(function(id){var q=qById[id];return !q||ex.answers[id]!==q.answer;});label="Scored items you missed";empty="Nothing missed — perfect score on the scored items.";
+    }
+    var head=el("div");head.style.cssText="display:flex;gap:8px;align-items:center;margin:20px 0 8px";head.innerHTML='<span class="eyebrow" style="flex:1">'+esc(label)+' · '+ids.length+'</span>';box.appendChild(head);
+    var letters=["A","B","C","D","E","F"];
+    ids.forEach(function(qid){
+      var k=ex.qids.indexOf(qid),q=qById[qid];if(!q)return;var chosen=ex.answers[qid],ok=chosen===q.answer,isExperimental=(ex.experimentalIds||[]).indexOf(qid)>=0;
+      var card=el("div","c-card p3-review-card");card.style.marginBottom="10px";
+      var h='<div class="c-q__counter">Item '+(k+1)+' · '+(domainById[q.domain]?domainById[q.domain].short:q.domain)+(isExperimental?' · experimental-style':'')+' · <span style="color:'+(ok?'var(--normal)':'var(--emergency)')+'">'+(ok?'correct':(chosen==null?'unanswered':'incorrect'))+'</span></div>'+qDiagram(q)+'<div style="margin:6px 0 8px">'+esc(q.stem)+'</div>';
+      examOptionOrder(ex,q).forEach(function(ci,di){var mark=ci===q.answer?'✓ ':(ci===chosen?'✗ ':''),c=ci===q.answer?'var(--normal)':(ci===chosen?'var(--emergency)':'var(--readout-dim)');h+='<div style="font-size:.9rem;color:'+c+'">'+mark+letters[di]+'. '+esc(q.options[ci])+'</div>';});
+      h+='<div class="c-secrow__n" style="margin-top:8px">'+esc(q.explain)+'</div><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><a class="c-tooltip__link" data-exam-review-topic href="#/m/'+q.module+'/s/'+q.section+'">Review topic →</a>'+(q.std?'<a class="c-tooltip__link" href="#/standards/'+encodeURIComponent(q.std)+'">'+esc(q.std)+' →</a>':'')+'</div>';
+      card.innerHTML=h;
+      var topic=card.querySelector("[data-exam-review-topic]");if(topic)topic.addEventListener("click",function(){saveReturnContext(q.section,"#/exam/result/"+mode,"Back to "+label.toLowerCase());});
+      box.appendChild(card);
+    });
+    if(!ids.length)box.appendChild(el("p","c-secrow__n",empty));
+  }
 
   /* ---- credential-specific study plan ----------------------------------- */
   var DOMAIN_MODULES = {
@@ -1005,7 +1074,7 @@
         options:q.options, answer:q.answer, explain:q.explain, lc:blob.toLowerCase() });
     });
     GLOSSARY.forEach(function (g) {
-      var text=(g.term+(g.acronym?" ("+g.acronym+")":"")+" "+g.definition).trim();
+      var text=(g.term+(g.acronym?" ("+g.acronym+")":"")+" "+stripText(g.definition)).trim();
       references.push({href:"#/glossary?term="+encodeURIComponent(g.id),crumb:"Glossary › "+g.term,text:text,lc:text.toLowerCase()});
     });
     (NERC.standards || []).forEach(function (fam) {
@@ -1267,13 +1336,13 @@
     mountView(v);
     var jump=document.getElementById("gletters");letters.forEach(function(letter){var b=document.createElement("button");b.type="button";b.className="p3-az__btn";b.textContent=letter;b.setAttribute("aria-label","Jump to glossary terms beginning with "+letter);b.addEventListener("click",function(){var h=document.getElementById("g-"+letter);if(h){h.scrollIntoView({behavior:document.documentElement.getAttribute("data-motion")==="reduce"?"auto":"smooth",block:"start"});h.focus();}});jump.appendChild(b);});
     var list=document.getElementById("glist"),count=document.getElementById("gcount");
-    function paint(filter){list.innerHTML="";var f=(filter||"").toLowerCase(),shown=GLOSSARY.slice().sort(function(a,b){return a.term.localeCompare(b.term);}).filter(function(t){return !f||t.term.toLowerCase().indexOf(f)>=0||(t.acronym&&t.acronym.toLowerCase().indexOf(f)>=0)||t.definition.toLowerCase().indexOf(f)>=0;});count.textContent=shown.length+" term"+(shown.length===1?"":"s")+" shown";var groups={};shown.forEach(function(t){var l=(t.term.charAt(0)||"#").toUpperCase();if(!/[A-Z]/.test(l))l="#";(groups[l]||(groups[l]=[])).push(t);});Object.keys(groups).sort().forEach(function(letter){var sec=document.createElement("section");sec.className="p3-gsection";var h=document.createElement("h2");h.className="p3-gsection__head";h.id="g-"+letter;h.tabIndex=-1;h.textContent=letter;sec.appendChild(h);groups[letter].forEach(function(t){var row=el("article","c-gitem");row.innerHTML='<div><span class="c-gitem__term">'+esc(t.term)+'</span>'+(t.acronym?'<span class="c-gitem__acr">'+esc(t.acronym)+'</span>':'')+'</div><div class="c-gitem__def">'+esc(t.definition)+'</div>'+(t.moduleRef&&sectionById[t.moduleRef]?'<a class="c-gitem__link" href="#/m/'+sectionById[t.moduleRef].module.id+'/s/'+t.moduleRef+'">Where this is taught →</a>':'');sec.appendChild(row);});list.appendChild(sec);});if(!shown.length)list.appendChild(el("p","c-secrow__n","No terms match that filter."));}
+    function paint(filter){list.innerHTML="";var f=(filter||"").toLowerCase(),shown=GLOSSARY.slice().sort(function(a,b){return a.term.localeCompare(b.term);}).filter(function(t){return !f||t.term.toLowerCase().indexOf(f)>=0||(t.acronym&&t.acronym.toLowerCase().indexOf(f)>=0)||stripText(t.definition).toLowerCase().indexOf(f)>=0;});count.textContent=shown.length+" term"+(shown.length===1?"":"s")+" shown";var groups={};shown.forEach(function(t){var l=(t.term.charAt(0)||"#").toUpperCase();if(!/[A-Z]/.test(l))l="#";(groups[l]||(groups[l]=[])).push(t);});Object.keys(groups).sort().forEach(function(letter){var sec=document.createElement("section");sec.className="p3-gsection";var h=document.createElement("h2");h.className="p3-gsection__head";h.id="g-"+letter;h.tabIndex=-1;h.textContent=letter;sec.appendChild(h);groups[letter].forEach(function(t){var row=el("article","c-gitem");row.innerHTML='<div><span class="c-gitem__term">'+esc(t.term)+'</span>'+(t.acronym?'<span class="c-gitem__acr">'+esc(t.acronym)+'</span>':'')+'</div><div class="c-gitem__def">'+esc(stripText(t.definition))+'</div>'+(t.moduleRef&&sectionById[t.moduleRef]?'<a class="c-gitem__link" href="#/m/'+sectionById[t.moduleRef].module.id+'/s/'+t.moduleRef+'">Where this is taught →</a>':'');sec.appendChild(row);});list.appendChild(sec);});if(!shown.length)list.appendChild(el("p","c-secrow__n","No terms match that filter."));}
     document.getElementById("gsearch").addEventListener("input",function(){paint(this.value);});
     var query=location.hash.split("?")[1]||"",match=query.match(/(?:^|&)term=([^&]+)/);if(match){var id=decodeURIComponent(match[1]),term=gById[id];if(term){document.getElementById("gsearch").value=term.term;paint(term.term);return;}}
     paint("");
   }
 
-  /* ---- review mode (SME flagging + simple question edits) -------------- */
+  /* ---- SME mode (SME flagging + simple question edits) ----------------- */
   var REVIEW_KEY = "nerc-to-console.review.v1", reviewMem = null;
   function loadReview() { if (reviewMem) return reviewMem; try { var r = window.localStorage.getItem(REVIEW_KEY); reviewMem = r ? JSON.parse(r) : { enabled: false, entries: {} }; } catch (e) { reviewMem = { enabled: false, entries: {} }; } return reviewMem; }
   function saveReview(o) { reviewMem = o; try { window.localStorage.setItem(REVIEW_KEY, JSON.stringify(o)); } catch (e) {} }
@@ -1335,7 +1404,7 @@
       var c = comment.input.value.trim(), rv2 = loadReview();
       if (!c && Object.keys(edits).length === 0) { delete rv2.entries[q.id]; saveReview(rv2); status.textContent = "Nothing to save (no comment or edits)."; return; }
       rv2.entries[q.id] = { type: "q", comment: c, edits: edits, ref: { module: q.module, section: q.section, domain: q.domain, topic: q.topic } };
-      saveReview(rv2); status.textContent = "Saved \u2713  (see it in Review mode \u2192 inbox)";
+      saveReview(rv2); status.textContent = "Saved \u2713  (see it in SME Mode \u2192 inbox)";
     });
     rmBtn.addEventListener("click", function () { var rv2 = loadReview(); delete rv2.entries[q.id]; saveReview(rv2); status.textContent = "Removed."; });
     box.appendChild(panel);
@@ -1399,7 +1468,7 @@
       if (e.edits.explain != null) c.explain = e.edits.explain;
       return c;
     });
-    return "/* data.questions.js \u2014 regenerated by Review mode " + new Date().toISOString() + " */\n" +
+    return "/* data.questions.js \u2014 regenerated by SME Mode " + new Date().toISOString() + " */\n" +
       "window.NERC = window.NERC || {};\nwindow.NERC.questions = " + JSON.stringify(arr, null, 2) + ";\n";
   }
 
@@ -1408,20 +1477,20 @@
   }
 
   function viewReview() {
-    renderChrome("Review mode");
+    renderChrome("SME Mode");
     var rv = loadReview(), list = reviewEntriesList();
     var qEdits = list.filter(function (e) { return e.type === "q" && e.edits && Object.keys(e.edits).length; }).length;
     var v = el("div", "c-view");
     var html =
       '<div class="eyebrow">SME review</div>' +
-      '<h1 class="c-h1">Review mode</h1>' +
+      '<h1 class="c-h1">SME Mode</h1>' +
       '<p class="c-lead">Turn this on, then walk the material. Every practice question and lesson section grows a flag panel: fix simple question fields inline, or leave a comment on anything that needs rework. Nothing here changes the live content \u2014 it collects notes you export below.</p>' +
       '<div class="c-card" style="margin:16px 0;display:flex;align-items:center;gap:14px;flex-wrap:wrap">' +
-        '<button class="c-btn ' + (rv.enabled ? "c-btn--primary" : "") + '" id="rv-toggle" type="button">' + (rv.enabled ? "\u2713 Review mode ON" : "Turn review mode ON") + '</button>' +
+        '<button class="c-btn ' + (rv.enabled ? "c-btn--primary" : "") + '" id="rv-toggle" type="button">' + (rv.enabled ? "\u2713 SME Mode ON" : "Turn SME Mode ON") + '</button>' +
         '<span class="c-secrow__n">' + (rv.enabled ? "Flag panels are showing in practice questions and lesson sections." : "Flag panels stay hidden until you turn this on.") + '</span>' +
       '</div>' +
-      '<h2 class="c-h2">Review inbox (' + list.length + ')</h2>';
-    if (!list.length) { html += '<p class="c-secrow__n">No flags yet. Turn on review mode, then flag questions in Practice and sections in the lessons.</p>'; }
+      '<h2 class="c-h2">SME review inbox (' + list.length + ')</h2>';
+    if (!list.length) { html += '<p class="c-secrow__n">No flags yet. Turn on SME Mode, then flag questions in Practice and sections in the lessons.</p>'; }
     else {
       html += '<div class="c-seclist">';
       list.forEach(function (e) {
@@ -1586,6 +1655,7 @@
     if (p[0] === "m" && p[1]) return viewModule(p[1]);
     if (p[0] === "practice") {
       if (!p[1]) return practiceLanding();
+      if (p[1] === "resume-run") { if (quizState.list && quizState.list.length) { renderChrome("Practice · resumed"); return renderQuestion(); } location.hash="#/practice"; return; }
       if (p[1] === "all") return runQuiz(QUESTIONS.slice(), null, "all");
       if (p[1] === "missed") return runQuiz(missedQuestions(), "Review your misses", "missed:" + Date.now());
       if (p[1] === "adaptive-run") { if (quizState.list && quizState.list.length) return renderQuestion(); location.hash="#/adaptive"; return; }

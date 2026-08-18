@@ -1,4 +1,4 @@
-const CACHE_NAME = "nerc-study-console-v3.2.0-remediated-pwa1";
+const CACHE_NAME = "nerc-study-console-v3.4.1-pwa4";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -12,6 +12,7 @@ const APP_SHELL = [
   "./js/data.phase2.js",
   "./js/data.phase3.js",
   "./js/data.questions.js",
+  "./js/data.references.js",
   "./js/data.release.js",
   "./js/data.remediation.js",
   "./js/data.standards.js",
@@ -46,6 +47,7 @@ const APP_SHELL = [
   "./js/interactives/relayCoordination.js",
   "./js/interactives/restorationApproach.js",
   "./js/interactives/restorationSeq.js",
+  "./js/interactives/roleEventChain.js",
   "./js/interactives/silCurve.js",
   "./js/interactives/solIrolLab.js",
   "./js/interactives/synchLab.js",
@@ -82,8 +84,9 @@ self.addEventListener('message', event => {
   if (data.type === 'CACHE_STATUS') {
     event.waitUntil((async () => {
       const cache = await caches.open(CACHE_NAME);
-      const keys = await cache.keys();
-      const payload = { type: 'CACHE_STATUS', ready: keys.length >= APP_SHELL.length, cached: keys.length, expected: APP_SHELL.length, cache: CACHE_NAME };
+      const matches = await Promise.all(APP_SHELL.map(asset => cache.match(asset)));
+      const cachedCount = matches.filter(Boolean).length;
+      const payload = { type: 'CACHE_STATUS', ready: cachedCount === APP_SHELL.length, cached: cachedCount, expected: APP_SHELL.length, cache: CACHE_NAME };
       if (event.source && event.source.postMessage) event.source.postMessage(payload);
       else { const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true }); clients.forEach(client => client.postMessage(payload)); }
     })());

@@ -277,7 +277,7 @@ window.NERC.glossary = [
     seeAlso: ["ace","frequency"], moduleRef: "m9-agc-ace" },
 
   { id: "ace", term: "Area Control Error", acronym: "ACE",
-    definition: "A single number telling a Balancing Authority whether it is meeting its obligation: ACE = (actual - scheduled interchange) - 10B(actual - scheduled frequency). Negative means short (raise generation); positive means long.",
+    definition: "A single MW value indicating a Balancing Authority Area's error in scheduled interchange adjusted for Frequency Bias, known meter error, and Inadvertent Interchange Management when applicable. Reporting ACE = (NIA - NIS) - 10B(FA - FS) - IME + IIM. Under the convention used in this console, negative means short and positive means long.",
     seeAlso: ["agc","frequency-bias","interchange"], moduleRef: "m9-agc-ace" },
 
   { id: "frequency-bias", term: "Frequency Bias", acronym: "B",

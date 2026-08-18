@@ -94,10 +94,18 @@ window.NERC.content = [
           { t: "p", html: "Not all power does the same job. {{real-power|Real power}} (MW) does the useful work — spinning motors, making heat and light. {{reactive-power|Reactive power}} (MVAR) does no net work; instead it sustains the magnetic and electric fields that AC equipment needs, and it is the main lever operators use to hold {{voltage|voltage}} where it belongs. Combine the two as vectors and you get {{apparent-power|apparent power}} (MVA), which is what actually loads up your {{conductor|conductors}} and transformers." },
           { t: "note", kind: "alert", title: "Common trap",
             html: "Because reactive power does 'no work,' beginners assume it doesn't matter. It matters enormously: without enough reactive support in the right places, voltage collapses — and {{voltage-collapse|voltage collapse}} can take down a wide area faster than a thermal overload." },
-          { t: "p", html: "The relationship between the three is the <strong>power triangle</strong>, and the angle of that triangle is set by the {{power-factor|power factor}}. Drag the slider below to feel how shifting the mix between real and reactive power changes the total apparent loading on your equipment." },
+          { t: "h", text: "Build the power triangle" },
+          { t: "p", html: "The relationship is a right triangle. The horizontal leg is real power <strong>P</strong> in MW, the vertical leg is reactive power <strong>Q</strong> in MVAR, and the hypotenuse is apparent power <strong>S</strong> in MVA. The Pythagorean theorem gives <strong>S² = P² + Q²</strong>. Rearrange it to find any missing side: <strong>S = √(P² + Q²)</strong> or <strong>Q = √(S² − P²)</strong>." },
+          { t: "p", html: "{{power-factor|Power factor}} tells you how much of the total equipment loading is doing real work: <strong>PF = P ÷ S = cos θ</strong>. A PF of 1.00 makes the triangle flat because Q is zero. As lagging PF falls, the angle θ opens, the Q leg grows, and more of the same MVA capacity is committed to reactive flow." },
+          { t: "p", html: "The explorer below fixes <strong>S at 100 MVA</strong>. That is the key to reading it: the equipment stays fully loaded while you change the mix. The live work panel shows each calculation. Select <strong>Show 0.80 PF example</strong> and watch 100 MVA resolve into 80 MW and 60 MVAR." },
           { t: "interactive", id: "powerTriangle" },
+          { t: "h", text: "Worked operator example: why power factor changes usable capacity" },
+          { t: "p", html: "A transformer is rated <strong>100 MVA</strong> and is carrying <strong>80 MW</strong> at <strong>0.80 PF</strong>. First find apparent power: <strong>S = P ÷ PF = 80 ÷ 0.80 = 100 MVA</strong>. Then find reactive power: <strong>Q = √(100² − 80²) = 60 MVAR</strong>. The transformer is at its full MVA rating even though the MW number is only 80." },
+          { t: "p", html: "If nearby reactive support improves the load to <strong>0.95 PF</strong> while it still takes 80 MW, then <strong>S = 80 ÷ 0.95 = 84.2 MVA</strong> and <strong>Q ≈ 26.3 MVAR</strong>. The same real work now uses about 16 MVA less transformer capacity and less current. That creates thermal margin and reduces current-squared losses. The operator lesson is not 'eliminate Q'—the grid needs Q—but supply and control it deliberately, close to where it is needed." },
+          { t: "note", kind: "normal", title: "Sign and direction",
+            html: "This introductory triangle displays the <em>magnitude</em> of lagging, inductive MVAR above the P axis. Real systems also have leading, capacitive reactive flow, often drawn below the axis or assigned the opposite sign. Always use the sign convention on the operating display, study, or procedure; the magnitude relationship <strong>S² = P² + Q²</strong> remains the same." },
           { t: "note", kind: "op", title: "Why this shows up on the exam",
-            html: "A Transmission Operator constantly trades voltage against reactive resources. Every scenario about {{capacitor-bank|capacitor banks}}, {{reactor|reactors}}, generator VARs, or low-voltage conditions traces back to this triangle. Get comfortable here and a whole class of questions gets easier." }
+            html: "A Transmission Operator constantly trades voltage against reactive resources and equipment loading. Every scenario about {{capacitor-bank|capacitor banks}}, {{reactor|reactors}}, generator VAR limits, low voltage, power factor, current, or an MVA rating traces back to this triangle. Get comfortable finding the missing side and explaining what it means operationally." }
         ]
       },
 
@@ -208,6 +216,8 @@ window.NERC.content = [
             html: "For <em>rules and enforcement</em> \u2014 a separate ladder: {{ferc|FERC}} \u2192 {{nerc|NERC}} \u2192 {{regional-entity|Regional Entities}} \u2192 the registered entities. Don't confuse the two: the RC can direct your switching in real time, but it's your Regional Entity that audits your compliance." },
           { t: "h", text: "How they all interact on a normal day" },
           { t: "p", html: "Follow one transaction and nearly every role appears. A {{pse|PSE}} arranges to buy power from a plant in the next area; that becomes an {{interchange|interchange}} schedule the two {{ba|BAs}} build into their {{ace|ACE}}. A {{tsp|TSP}} confirms transmission service for the deal. The selling {{gop|GOP}} runs the {{gen-owner|Generator Owner's}} units to produce it; the {{top|TOPs}} along the path operate the {{trans-owner|Transmission Owners'}} lines to move it; the {{rc|RC}} watches the whole region for limits; and the {{dp|DP}} finally delivers it to the {{lse|LSE's}} customers. One deal, the entire functional model in motion." },
+          { t: "p", html: "Now follow that same transfer through a line trip. The timeline makes the handoffs explicit: who created the schedule, who owns the equipment, who operates it, who balances the area, who coordinates the wide area, and who oversees compliance after the event." },
+          { t: "interactive", id: "roleEventChain" },
           { t: "scenario", role: "Transmission Operator", title: "You're the operator: who's responsible?",
             setup: "A 345 kV line on your system is heading toward a post-contingency overload. Relieving it will take a generator near the line to lower its output, plus a switching step at a substation that a neighboring company <em>owns</em> but that you operate under your {{top|TOP}} function.",
             steps: [
@@ -250,6 +260,74 @@ window.NERC.content = [
           { t: "note", kind: "alert", title: "When the tools go dark",
             html: "If the state estimator or contingency analysis fails, you've lost the ability to see post-contingency problems. That is itself an emergency-preparedness topic on the exam: know your backup procedures and operate more conservatively until the tools return." },
           { t: "p", html: "Some contingencies are handled automatically by a {{ras|Remedial Action Scheme}} \u2014 a pre-planned automatic action that trips generation, sheds load, or reconfigures to keep the system inside limits and prevent {{cascading|cascading}}." }
+        ]
+      },
+
+      /* ---- Section: Formula and calculation review ---- */
+      { id: "f-formula-review", title: "Formula and calculation review",
+        body: [
+          { t: "p", html: "Use this section as a repeatable calculation checklist. It collects the core electrical formulas and the operational arithmetic used throughout this console. It is a study aid, not an official NERC formula sheet and not a claim that every equation appears on every credential exam. The current exam content outline and approved references remain the authority for what to study." },
+          { t: "h", text: "A four-step method for every calculation" },
+          { t: "list", items: [
+            "<strong>1. Write the known values with units.</strong> Convert prefixes before substituting: k = 10³, M = 10⁶, and G = 10⁹.",
+            "<strong>2. Identify the system and the unknown.</strong> Is it DC, single-phase AC, or balanced three-phase? Are you solving for MW, MVAR, MVA, current, energy, percent, or margin?",
+            "<strong>3. Rearrange first, then substitute.</strong> Keeping the symbols visible makes sign and unit errors easier to catch.",
+            "<strong>4. Check the result against physics.</strong> MVA cannot be smaller than MW; PF must be from 0 to 1 in magnitude; doubling current makes I²R loss four times larger; and a negative margin means a deficiency."
+          ] },
+
+          { t: "h", text: "Ohm's Law" },
+          { t: "note", kind: "normal", title: "Voltage, current, resistance",
+            html: "<strong>V = I × R</strong> &nbsp;·&nbsp; <strong>I = V ÷ R</strong> &nbsp;·&nbsp; <strong>R = V ÷ I</strong>. Use consistent base units: volts, amperes, and ohms. Example: a 125 V DC control circuit with 25 Ω has <strong>I = 125 ÷ 25 = 5 A</strong>. In AC networks, impedance <strong>Z</strong> replaces simple resistance when reactance matters: <strong>V = I × Z</strong>." },
+
+          { t: "h", text: "Single-phase and three-phase AC power" },
+          { t: "list", items: [
+            "<strong>Single-phase apparent power:</strong> S = V × I.",
+            "<strong>Single-phase real power:</strong> P = V × I × PF = V × I × cos φ.",
+            "<strong>Single-phase reactive power:</strong> Q = V × I × sin φ.",
+            "<strong>Balanced three-phase apparent power:</strong> S = √3 × V<sub>LL</sub> × I<sub>L</sub>.",
+            "<strong>Balanced three-phase real power:</strong> P = √3 × V<sub>LL</sub> × I<sub>L</sub> × PF.",
+            "<strong>Balanced three-phase reactive power:</strong> Q = √3 × V<sub>LL</sub> × I<sub>L</sub> × sin φ."
+          ] },
+          { t: "p", html: "The unit shortcut is useful: kV × A = kVA, and kV × kA = MVA. For a balanced 230 kV line carrying 1.00 kA, <strong>S = 1.732 × 230 × 1.00 ≈ 398 MVA</strong>. At 0.95 PF, <strong>P = 398 × 0.95 ≈ 378 MW</strong>. Use line-to-line voltage and line current in the three-phase formulas." },
+          { t: "note", kind: "alert", title: "Do not drop the power factor",
+            html: "The shortcut <strong>P = V × I</strong> is correct for DC or a unity-power-factor AC load. For general single-phase AC, real power is <strong>V × I × PF</strong>. For balanced three-phase, include both <strong>√3</strong> and <strong>PF</strong>." },
+
+          { t: "h", text: "Power triangle and power factor" },
+          { t: "list", items: [
+            "<strong>Power triangle:</strong> S² = P² + Q².",
+            "<strong>Find apparent power:</strong> S = √(P² + Q²).",
+            "<strong>Find reactive power:</strong> Q = √(S² − P²).",
+            "<strong>Power factor:</strong> PF = P ÷ S = cos φ.",
+            "<strong>Useful rearrangements:</strong> P = S × PF; S = P ÷ PF; Q = P × tan φ."
+          ] },
+          { t: "p", html: "Worked example: a circuit carries 300 MW and 200 MVAR. <strong>S = √(300² + 200²) = 360.6 MVA</strong>, and <strong>PF = 300 ÷ 360.6 = 0.832</strong>. The thermal loading is about 361 MVA, not 300 MW. Return to <strong>AC power for operators</strong> for the full interactive explanation." },
+
+          { t: "h", text: "Current-squared losses" },
+          { t: "note", kind: "op", title: "Power loss",
+            html: "For one resistive path, <strong>P<sub>loss</sub> = I² × R</strong>. For a balanced three-phase circuit when R is the resistance of each phase, <strong>P<sub>loss,total</sub> = 3 × I² × R</strong>. If current doubles, loss becomes four times larger. For roughly the same MW and PF, raising voltage lowers current; halving current reduces I²R loss to one quarter. Ratings, conductor temperature, and AC resistance still control the actual facility limit." },
+
+          { t: "h", text: "Energy, ramps, percentages, and per-unit" },
+          { t: "list", items: [
+            "<strong>Energy:</strong> MWh = MW × hours. Example: 250 MW for 4 hours = 1,000 MWh.",
+            "<strong>Ramp rate:</strong> ramp rate = ΔMW ÷ Δminutes; change achieved = ramp rate × elapsed minutes. A 0-to-300 MW linear ramp over 10 minutes is 30 MW/minute and reaches 120 MW at minute 4.",
+            "<strong>Per-unit:</strong> p.u. = actual ÷ base; actual = p.u. × base. A 138 kV bus at 0.97 p.u. is 133.9 kV.",
+            "<strong>Percent loading:</strong> loading % = actual or predicted flow ÷ rating × 100. A 430 MVA flow on a 400 MVA rating is 107.5%.",
+            "<strong>Percent change:</strong> (new − old) ÷ old × 100. Keep the sign when direction matters."
+          ] },
+
+          { t: "h", text: "Area Control Error (ACE)" },
+          { t: "p", html: "The current NERC Reporting ACE form is <strong>Reporting ACE = (NIA − NIS) − 10B(FA − FS) − IME + IIM</strong>. NIA and NIS are Actual and Scheduled Net Interchange; B is the Frequency Bias Setting in MW per 0.1 Hz; FA and FS are actual and scheduled frequency; IME corrects known interchange meter error; and IIM is an Inadvertent Interchange Management term when the applicable mode or regional procedure uses it. Many study problems set IME and IIM to zero so the interchange and frequency-bias terms are visible." },
+          { t: "p", html: "Example using the console's positive-export convention: NIA = 470 MW, NIS = 500 MW, B = −40 MW/0.1 Hz, FA = 59.98 Hz, FS = 60.00 Hz, and IME = IIM = 0. The tie term is <strong>470 − 500 = −30 MW</strong>. The frequency term is <strong>−10(−40)(59.98 − 60.00) = −8 MW</strong>. Therefore <strong>ACE = −30 − 8 = −38 MW</strong>: the area is short and needs more generation or an equivalent balancing response. Always follow the sign convention and approved implementation used by the applicable Interconnection and entity." },
+
+          { t: "h", text: "Operational arithmetic that appears in scenarios" },
+          { t: "list", items: [
+            "<strong>Dependable capacity margin:</strong> dependable supply + dependable imports − forecast demand − the reserve requirement included in the problem. A negative result is the amount of deficiency. Count only capability the scenario says is available and deliverable.",
+            "<strong>Frequency response magnitude:</strong> MW response ÷ (|Δf| ÷ 0.1 Hz). An 800 MW loss with a 0.040 Hz decline corresponds to about 800 ÷ 0.4 = 2,000 MW per 0.1 Hz.",
+            "<strong>Simplified parallel-path split:</strong> flow divides approximately inversely with path reactance. For two paths, P₁ = P<sub>total</sub> × X₂ ÷ (X₁ + X₂) and P₂ = P<sub>total</sub> × X₁ ÷ (X₁ + X₂). If Path 1 has half the reactance of Path 2, it carries about twice the flow.",
+            "<strong>Droop span:</strong> frequency span for a full output range = droop % × nominal frequency. Five-percent droop on 60 Hz corresponds to 3 Hz across the modeled no-load-to-full-load range; actual response also depends on unit rating, operating point, deadband, limits, and settings."
+          ] },
+          { t: "note", kind: "normal", title: "Final reasonableness check",
+            html: "Ask what the number means to the operator. Is it an actual value or a post-contingency prediction? Does it use MW or MVA? Is the resource available and deliverable? Is the result inside a rating, schedule, voltage band, or time requirement? A correct calculation with the wrong operating context is still the wrong answer." }
         ]
       }
     ]
@@ -887,13 +965,14 @@ window.NERC.content = [
       { id: "m9-agc-ace", title: "AGC and Area Control Error",
         body: [
           { t: "p", html: "A Balancing Authority keeps its area in balance using {{ace|Area Control Error}} \u2014 a single number, in MW, that folds two things an area could get wrong into one signal: how far its interchange is off schedule, and its share of the Interconnection's frequency error." },
-          { t: "p", html: "<strong>ACE = (actual \u2212 scheduled interchange) \u2212 10B(actual \u2212 scheduled frequency)</strong>" },
+          { t: "p", html: "<strong>Reporting ACE = (NIA \u2212 NIS) \u2212 10B(FA \u2212 FS) \u2212 IME + IIM</strong>" },
           { t: "list", items: [
-            "<strong>The interchange half</strong> \u2014 actual minus scheduled net interchange on your {{tie-line|tie lines}}. If you're importing more than scheduled, this half is negative.",
-            "<strong>The frequency half</strong> \u2014 your {{frequency-bias|frequency bias}} B (a <em>negative</em> number, in MW per 0.1 Hz) times the frequency deviation. The 10 converts Hz to units of 0.1 Hz. Because B is negative, a low frequency makes this half push ACE negative too.",
+            "<strong>The interchange half</strong> \u2014 Actual Net Interchange (NIA) minus Scheduled Net Interchange (NIS) on your {{tie-line|tie lines}}. With the convention used in this console, importing more or exporting less than scheduled makes this term negative.",
+            "<strong>The frequency half</strong> \u2014 your {{frequency-bias|Frequency Bias Setting}} B (a <em>negative</em> number, in MW per 0.1 Hz) times actual minus scheduled frequency. The 10 converts Hz to units of 0.1 Hz. Because B is negative, a low frequency makes this term push ACE negative too.",
+            "<strong>The correction terms</strong> \u2014 IME corrects known interchange meter error. IIM represents Inadvertent Interchange Management when the applicable mode or regional procedure uses it. Introductory examples often set both to zero.",
             "<strong>Sign, in one line</strong> \u2014 negative ACE means the area is <em>short</em> (raise generation); positive means <em>long</em> (lower it); {{agc|AGC}} works continuously to drive it toward zero."
           ] },
-          { t: "p", html: "First, get a feel for the arithmetic \u2014 move actual interchange and frequency and watch ACE and the resulting instruction." },
+          { t: "p", html: "First, get a feel for the arithmetic \u2014 move actual interchange and frequency and watch ACE and the resulting instruction. This training calculator holds IME and IIM at zero so you can see the two primary terms clearly." },
           { t: "interactive", id: "aceCalc" },
           { t: "p", html: "That calculator lets you set the two inputs independently, but in the real world they move <em>together</em>, driven by one thing: whether your generation matches your load plus your scheduled interchange. The next simulator shows that cause and effect. Hold your generation against your load, trip a unit, and drive ACE back to zero \u2014 watching the tie flow return to schedule and frequency return to 60 as you do." },
           { t: "interactive", id: "aceLoop" },

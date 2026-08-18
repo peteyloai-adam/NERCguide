@@ -185,6 +185,9 @@
   });
 
   function start() {
+    // The marker prevents a controllerchange reload loop for one document.
+    // Clear it in each newly loaded document so a later release can reload too.
+    sessionStorage.removeItem('nerc-pwa-reloading');
     var view = document.getElementById('view');
     if (view) observer.observe(view, { childList: true, subtree: false });
     register();

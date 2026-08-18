@@ -1,7 +1,8 @@
 /* ============================================================================
    INTERACTIVE: Area Control Error  —  NERC.interactives.aceCalc
    ACE tells a Balancing Authority whether it's meeting its obligation to the
-   Interconnection. Formula: ACE = (NI_actual - NI_scheduled) - 10B(F_actual - F_scheduled).
+   Interconnection. Training form: ACE = (NIA - NIS) - 10B(FA - FS), with
+   IME and IIM held at zero so the two primary terms remain visible.
    Move actual interchange and frequency; watch ACE and what it tells the operator
    to do. (Illustrative: scheduled NI = 100 MW, F_s = 60.00 Hz, bias B = -50 MW/0.1Hz.)
    ========================================================================== */
@@ -34,6 +35,7 @@ window.NERC.interactives.aceCalc = function (mount) {
         '<label for="ac-f" style="margin-top:10px">Actual frequency (Hz)</label>' +
         '<input id="ac-f" type="range" min="5980" max="6020" value="6000" step="1" aria-label="Actual frequency">' +
       '</div>' +
+      '<p class="c-fineprint" style="margin-bottom:0">Training calculation: Reporting ACE = (NIA − NIS) − 10B(FA − FS) − IME + IIM, with IME = 0 and IIM = 0 here.</p>' +
     '</div>';
 
   var $ = function (id) { return mount.querySelector('#' + id); };
